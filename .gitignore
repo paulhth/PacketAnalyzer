@@ -1,0 +1,22 @@
+.venv/
+venv/
+env/
+ENV/
+
+# Data: raw pcaps and generated datasets
+data/raw_pcaps/
+data/datasets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+pip-wheel-metadata/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
