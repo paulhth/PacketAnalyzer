@@ -1,0 +1,45 @@
+@startuml
+left to right direction
+
+actor "Network Traffic Source" as TrafficSource
+actor "Local HTTP Server" as LocalServer
+
+rectangle "Network Traffic Classification System" {
+
+  usecase "Capture Network Traffic" as UC1
+  usecase "Load PCAP File" as UC2
+  usecase "Extract Packet-Level Features" as UC3
+  usecase "Build Raw Dataset" as UC4
+  usecase "Analyze Dataset" as UC5
+  usecase "Prepare Dataset for ML" as UC6
+  usecase "Train Classification Model" as UC7
+  usecase "Evaluate Model" as UC8
+  usecase "Compare Feature Sets" as UC9
+
+  usecase "Start Local HTTP Server" as UC10
+  usecase "Generate Local HTTP Requests" as UC11
+  usecase "Capture Local HTTP Traffic" as UC12
+  usecase "Extract HTTP Request Features" as UC13
+  usecase "Build HTTP Dataset" as UC14
+}
+
+
+TrafficSource --> UC1
+LocalServer --> UC10
+LocalServer --> UC11
+LocalServer --> UC12
+
+UC2 --> UC3
+UC3 --> UC4
+UC4 --> UC5
+UC5 --> UC6
+UC6 --> UC7
+UC7 --> UC8
+UC8 --> UC9
+
+UC10 --> UC11
+UC11 --> UC12
+UC12 --> UC13
+UC13 --> UC14
+
+@enduml
