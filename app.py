@@ -1,5 +1,6 @@
 import os
 import io
+from xml.parsers.expat import model
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -44,6 +45,19 @@ def load_dataset(csv_path: str) -> pd.DataFrame:
     df.columns = df.columns.str.strip()
     return df
 
+import pandas as pd
+
+def plot_feature_importance(model, feature_names):
+    importances = model.feature_importances_
+    feat_imp = pd.Series(importances, index=feature_names).sort_values(ascending=False)
+
+    st.subheader("Feature Importance")
+    st.write(feat_imp)
+
+    fig, ax = plt.subplots()
+    feat_imp.plot(kind="bar", ax=ax)
+    ax.set_title("Feature Importance")
+    st.pyplot(fig)
 
 def plot_bar(series: pd.Series, title: str, xlabel: str, ylabel: str):
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -99,7 +113,8 @@ def run_experiment(df: pd.DataFrame, feature_columns: list[str], label_column: s
         "accuracy": acc,
         "report": report,
         "confusion_matrix": cm,
-        "classes": list(label_encoder.classes_)
+        "classes": list(label_encoder.classes_),
+        "model": model
     }
 
 
@@ -283,6 +298,7 @@ if st.button("Run Experiments"):
             result_with_ports["classes"],
             "Confusion Matrix - With Ports"
         )
+        plot_feature_importance(result_with_ports["model"], features_with_ports)
 
     with res_col2:
         st.subheader("Experiment 2: Without Ports")
