@@ -1,14 +1,13 @@
 import os
-import io
-from xml.parsers.expat import model
+from typing import Any
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
-
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 
 # =========================================
@@ -16,11 +15,14 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 # =========================================
 st.set_page_config(
     page_title="Network Traffic Flow Classifier",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("Network Traffic Flow Classification Dashboard")
-st.write("Analiza flow-based a traficului de rețea și evaluarea modelului de clasificare.")
+st.write(
+    "Analiza flow-based a traficului de rețea și evaluarea unui model "
+    "Random Forest pentru clasificarea traficului."
+)
 
 
 # =========================================
@@ -30,10 +32,45 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 default_csv_path = os.path.join(BASE_DIR, "data", "datasets", "prepared_flow_features.csv")
 
 if not os.path.exists(default_csv_path):
-    # fallback dacă app.py este în src/
-    alt_path = os.path.join(os.path.dirname(BASE_DIR), "data", "datasets", "prepared_flow_features.csv")
+    # Fallback pentru cazul în care app.py este rulat dintr-un director src/.
+    alt_path = os.path.join(
+        os.path.dirname(BASE_DIR),
+        "data",
+        "datasets",
+        "prepared_flow_features.csv",
+    )
     if os.path.exists(alt_path):
         default_csv_path = alt_path
+
+
+# =========================================
+# Feature sets
+# =========================================
+FEATURES_WITH_PORTS = [
+    "src_port",
+    "dst_port",
+    "packet_count",
+    "total_bytes",
+    "avg_packet_size",
+    "min_packet_size",
+    "max_packet_size",
+    "duration_sec",
+    "packets_per_sec",
+    "bytes_per_sec",
+]
+
+FEATURES_WITHOUT_PORTS = [
+    "packet_count",
+    "total_bytes",
+    "avg_packet_size",
+    "min_packet_size",
+    "max_packet_size",
+    "duration_sec",
+    "packets_per_sec",
+    "bytes_per_sec",
+]
+
+NUMERIC_COLUMNS = FEATURES_WITHOUT_PORTS
 
 
 # =========================================
@@ -45,82 +82,53 @@ def load_dataset(csv_path: str) -> pd.DataFrame:
     df.columns = df.columns.str.strip()
     return df
 
-import pandas as pd
 
-def plot_feature_importance(model, feature_names):
+def get_missing_columns(df: pd.DataFrame, required_columns: list[str]) -> list[str]:
+    return [column for column in required_columns if column not in df.columns]
+
+
+def plot_feature_importance(model: RandomForestClassifier, feature_names: list[str]) -> None:
     importances = model.feature_importances_
     feat_imp = pd.Series(importances, index=feature_names).sort_values(ascending=False)
 
     st.subheader("Feature Importance")
-    st.write(feat_imp)
+    st.dataframe(feat_imp.rename("importance"), use_container_width=True)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 4))
     feat_imp.plot(kind="bar", ax=ax)
     ax.set_title("Feature Importance")
+    ax.set_xlabel("Feature")
+    ax.set_ylabel("Importance")
+    plt.tight_layout()
     st.pyplot(fig)
+    plt.close(fig)
 
-def plot_bar(series: pd.Series, title: str, xlabel: str, ylabel: str):
+
+def plot_bar(series: pd.Series, title: str, xlabel: str, ylabel: str) -> None:
     fig, ax = plt.subplots(figsize=(8, 4))
     series.plot(kind="bar", ax=ax)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    plt.tight_layout()
     st.pyplot(fig)
+    plt.close(fig)
 
 
-def plot_histogram(df: pd.DataFrame, column: str, bins: int = 30):
+def plot_histogram(df: pd.DataFrame, column: str, bins: int = 30) -> None:
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(df[column], bins=bins)
     ax.set_title(f"Distribution of {column}")
     ax.set_xlabel(column)
     ax.set_ylabel("Frequency")
+    plt.tight_layout()
     st.pyplot(fig)
+    plt.close(fig)
 
 
-def run_experiment(df: pd.DataFrame, feature_columns: list[str], label_column: str = "label") -> dict:
-    work_df = df.copy()
-    work_df = work_df[work_df[label_column] != "OTHER"].copy()
-
-    X = work_df[feature_columns]
-    y = work_df[label_column]
-
-    label_encoder = LabelEncoder()
-    y_encoded = label_encoder.fit_transform(y)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y_encoded,
-        test_size=0.2,
-        random_state=42,
-        stratify=y_encoded
-    )
-
-    model = DecisionTreeClassifier(random_state=42)
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    report = classification_report(
-        y_test,
-        y_pred,
-        target_names=label_encoder.classes_,
-        zero_division=0
-    )
-    cm = confusion_matrix(y_test, y_pred)
-
-    return {
-        "accuracy": acc,
-        "report": report,
-        "confusion_matrix": cm,
-        "classes": list(label_encoder.classes_),
-        "model": model
-    }
-
-
-def plot_confusion_matrix(cm, classes, title: str):
+def plot_confusion_matrix(cm: Any, classes: list[str], title: str) -> None:
     fig, ax = plt.subplots(figsize=(6, 5))
-    im = ax.imshow(cm)
+    ax.imshow(cm)
     ax.set_title(title)
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
@@ -135,6 +143,57 @@ def plot_confusion_matrix(cm, classes, title: str):
 
     plt.tight_layout()
     st.pyplot(fig)
+    plt.close(fig)
+
+
+def run_experiment(
+    df: pd.DataFrame,
+    feature_columns: list[str],
+    label_column: str = "label",
+) -> dict[str, Any]:
+    required_columns = feature_columns + [label_column]
+    missing_columns = get_missing_columns(df, required_columns)
+
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
+
+    work_df = df.copy()
+    work_df = work_df[work_df[label_column] != "OTHER"].copy()
+
+    X = work_df[feature_columns]
+    y = work_df[label_column]
+
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y_encoded,
+        test_size=0.2,
+        random_state=42,
+        stratify=y_encoded,
+    )
+
+    model = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42,
+    )
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+
+    return {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "report": classification_report(
+            y_test,
+            y_pred,
+            target_names=label_encoder.classes_,
+            zero_division=0,
+        ),
+        "confusion_matrix": confusion_matrix(y_test, y_pred),
+        "classes": list(label_encoder.classes_),
+        "model": model,
+    }
 
 
 # =========================================
@@ -144,27 +203,26 @@ st.sidebar.header("Data Source")
 
 uploaded_file = st.sidebar.file_uploader(
     "Upload prepared_flow_features.csv",
-    type=["csv"]
+    type=["csv"],
 )
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
     st.sidebar.success("Custom CSV loaded.")
+elif os.path.exists(default_csv_path):
+    df = load_dataset(default_csv_path)
+    st.sidebar.info(f"Using default dataset:\n{default_csv_path}")
 else:
-    if os.path.exists(default_csv_path):
-        df = load_dataset(default_csv_path)
-        st.sidebar.info(f"Using default dataset:\n{default_csv_path}")
-    else:
-        st.error("Could not find prepared_flow_features.csv. Upload the file from the sidebar.")
-        st.stop()
+    st.error("Could not find prepared_flow_features.csv. Upload the file from the sidebar.")
+    st.stop()
+
+if "label" not in df.columns:
+    st.error("The dataset must contain a 'label' column.")
+    st.stop()
 
 remove_other = st.sidebar.checkbox("Remove OTHER class", value=True)
-
-if remove_other:
-    df_view = df[df["label"] != "OTHER"].copy()
-else:
-    df_view = df.copy()
+df_view = df[df["label"] != "OTHER"].copy() if remove_other else df.copy()
 
 
 # =========================================
@@ -204,19 +262,12 @@ with dist_col2:
         protocol_counts = df_view["transport_protocol"].value_counts()
         st.write(protocol_counts)
         plot_bar(protocol_counts, "Transport Protocol Distribution", "Protocol", "Count")
-
     elif "protocol" in df_view.columns:
         protocol_counts = df_view["protocol"].value_counts()
         st.write(protocol_counts)
         plot_bar(protocol_counts, "Protocol Distribution", "Protocol", "Count")
-
     else:
         st.warning("No transport/protocol column found in dataset.")
-
-# st.subheader("Dominant Highest Layer Distribution")
-# layer_counts = df_view["dominant_highest_layer"].value_counts()
-# st.write(layer_counts)
-# plot_bar(layer_counts, "Dominant Highest Layer Distribution", "Layer", "Count")
 
 st.subheader("Dominant Highest Layer Distribution")
 
@@ -227,63 +278,41 @@ if "dominant_highest_layer" in df_view.columns:
 else:
     st.info("Column 'dominant_highest_layer' is not available in the prepared dataset.")
 
+
 # =========================================
 # Numeric Features
 # =========================================
 st.header("Numeric Feature Exploration")
 
-numeric_columns = [
-    "packet_count",
-    "total_bytes",
-    "avg_packet_size",
-    "min_packet_size",
-    "max_packet_size",
-    "duration_sec",
-    "packets_per_sec",
-    "bytes_per_sec"
-]
+available_numeric_columns = [column for column in NUMERIC_COLUMNS if column in df_view.columns]
 
-selected_feature = st.selectbox("Choose a numeric feature", numeric_columns)
+if not available_numeric_columns:
+    st.warning("No expected numeric feature columns were found in the dataset.")
+else:
+    selected_feature = st.selectbox("Choose a numeric feature", available_numeric_columns)
+    plot_histogram(df_view, selected_feature)
 
-plot_histogram(df_view, selected_feature)
-
-st.subheader("Descriptive Statistics")
-st.dataframe(df_view[numeric_columns].describe(), use_container_width=True)
+    st.subheader("Descriptive Statistics")
+    st.dataframe(df_view[available_numeric_columns].describe(), use_container_width=True)
 
 
 # =========================================
 # ML Experiments
 # =========================================
 st.header("ML Experiments")
-
-features_with_ports = [
-    "src_port",
-    "dst_port",
-    "packet_count",
-    "total_bytes",
-    "avg_packet_size",
-    "min_packet_size",
-    "max_packet_size",
-    "duration_sec",
-    "packets_per_sec",
-    "bytes_per_sec"
-]
-
-features_without_ports = [
-    "packet_count",
-    "total_bytes",
-    "avg_packet_size",
-    "min_packet_size",
-    "max_packet_size",
-    "duration_sec",
-    "packets_per_sec",
-    "bytes_per_sec"
-]
+st.write(
+    "The experiments use Random Forest with 100 estimators, a fixed random state, "
+    "and an 80/20 stratified train-test split."
+)
 
 if st.button("Run Experiments"):
-    with st.spinner("Training models and generating results..."):
-        result_with_ports = run_experiment(df, features_with_ports)
-        result_without_ports = run_experiment(df, features_without_ports)
+    try:
+        with st.spinner("Training Random Forest models and generating results..."):
+            result_with_ports = run_experiment(df, FEATURES_WITH_PORTS)
+            result_without_ports = run_experiment(df, FEATURES_WITHOUT_PORTS)
+    except ValueError as error:
+        st.error(str(error))
+        st.stop()
 
     res_col1, res_col2 = st.columns(2)
 
@@ -296,9 +325,9 @@ if st.button("Run Experiments"):
         plot_confusion_matrix(
             result_with_ports["confusion_matrix"],
             result_with_ports["classes"],
-            "Confusion Matrix - With Ports"
+            "Confusion Matrix - With Ports",
         )
-        plot_feature_importance(result_with_ports["model"], features_with_ports)
+        plot_feature_importance(result_with_ports["model"], FEATURES_WITH_PORTS)
 
     with res_col2:
         st.subheader("Experiment 2: Without Ports")
@@ -309,12 +338,13 @@ if st.button("Run Experiments"):
         plot_confusion_matrix(
             result_without_ports["confusion_matrix"],
             result_without_ports["classes"],
-            "Confusion Matrix - Without Ports"
+            "Confusion Matrix - Without Ports",
         )
+        plot_feature_importance(result_without_ports["model"], FEATURES_WITHOUT_PORTS)
 
 
 # =========================================
 # Footer
 # =========================================
 st.markdown("---")
-st.write("This dashboard uses the prepared flow-based dataset and a Decision Tree classifier.")
+st.write("This dashboard uses the prepared flow-based dataset and a Random Forest classifier.")
