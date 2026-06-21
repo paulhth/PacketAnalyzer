@@ -1,0 +1,49 @@
+@startuml
+title Diagrama de secvență - Rularea experimentelor ML din dashboard-ul Streamlit
+
+actor Utilizator
+participant "app.py\nDashboard Streamlit" as App
+participant "prepared_flow_features.csv" as Dataset
+participant "LabelEncoder" as Encoder
+participant "train_test_split" as Splitter
+participant "RandomForestClassifier" as Model
+participant "Metrici de evaluare" as Metrics
+
+Utilizator -> App : Deschide dashboard-ul
+App -> Dataset : Încarcă datasetul pregătit
+Dataset --> App : Returnează dataframe-ul
+
+App -> Utilizator : Afișează sumarul datasetului
+App -> Utilizator : Afișează distribuțiile și statisticile
+
+Utilizator -> App : Apasă "Run Experiments"
+
+App -> App : Selectează caracteristicile cu porturi
+App -> Encoder : Codifică etichetele
+Encoder --> App : Returnează etichetele codificate
+App -> Splitter : Împarte datele în train/test
+Splitter --> App : Returnează X_train, X_test, y_train, y_test
+App -> Model : Antrenează Random Forest cu porturi
+Model --> App : Returnează modelul antrenat
+App -> Model : Prezice etichetele pentru setul de test
+Model --> App : Returnează y_pred
+App -> Metrics : Calculează metricile de evaluare
+Metrics --> App : Returnează rezultatele
+
+App -> App : Selectează caracteristicile fără porturi
+App -> Encoder : Codifică etichetele
+Encoder --> App : Returnează etichetele codificate
+App -> Splitter : Împarte datele în train/test
+Splitter --> App : Returnează X_train, X_test, y_train, y_test
+App -> Model : Antrenează Random Forest fără porturi
+Model --> App : Returnează modelul antrenat
+App -> Model : Prezice etichetele pentru setul de test
+Model --> App : Returnează y_pred
+App -> Metrics : Calculează metricile de evaluare
+Metrics --> App : Returnează rezultatele
+
+App -> Utilizator : Afișează comparația experimentelor
+App -> Utilizator : Afișează matricile de confuzie
+App -> Utilizator : Afișează importanța caracteristicilor
+
+@enduml

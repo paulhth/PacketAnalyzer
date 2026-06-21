@@ -1,0 +1,51 @@
+@startuml
+title Diagrama de activitate - Pipeline pentru clasificarea flow-based a traficului
+
+start
+
+:Încarcă captura PCAP/PCAPNG;
+
+:Inițializează dicționarul de flow-uri;
+
+while (Mai există pachete?) is (da)
+    :Citește următorul pachet;
+
+    if (Pachetul are layer IP?) then (da)
+        if (Pachetul are TCP sau UDP?) then (da)
+            :Extrage src_ip și dst_ip;
+            :Extrage src_port și dst_port;
+            :Extrage protocolul de transport;
+            :Extrage dimensiunea și timestamp-ul pachetului;
+            :Construiește cheia flow-ului;
+
+            if (Flow-ul există deja?) then (da)
+                :Actualizează statisticile flow-ului;
+            else (nu)
+                :Creează o nouă intrare de flow;
+            endif
+
+            :Actualizează numărul de pachete;
+            :Actualizează numărul total de bytes;
+            :Actualizează dimensiunea minimă și maximă;
+            :Actualizează primul și ultimul timestamp;
+            :Actualizează layer-ul dominant;
+        else (nu)
+            :Ignoră pachetul;
+        endif
+    else (nu)
+        :Ignoră pachetul;
+    endif
+endwhile (nu)
+
+:Calculează caracteristicile finale ale flow-urilor;
+:Atribuie eticheta pe baza layer-ului dominant;
+:Salvează datasetul brut de flow-uri;
+
+:Curăță și pregătește datasetul;
+:Selectează caracteristicile relevante pentru model;
+
+:Rulează experimentele ML cu și fără porturi;
+:Evaluează și afișează rezultatele în dashboard;
+
+stop
+@enduml

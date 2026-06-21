@@ -1,0 +1,37 @@
+@startuml
+skinparam componentStyle rectangle
+
+actor Researcher
+
+component "Traffic Capture\n(Wireshark / tcpdump)" as Capture
+component "Traffic Sources\n(browser, ping, nslookup,\ncurl, local HTTP server)" as Sources
+component "PCAP / PCAPNG Files" as Pcap
+component "Packet Feature Extraction\n(read_pcap.py,\nextract_basic_features.py)" as PacketExtraction
+component "HTTP Feature Extraction\n(extract_http_features.py)" as HttpExtraction
+component "Dataset Analysis\n(analyze_dataset.py)" as Analysis
+component "Dataset Preparation\n(prepare_dataset.py)" as Preparation
+component "ML Training & Evaluation\n(train_model.py)" as ML
+database "CSV Datasets" as CSV
+
+Researcher --> Capture
+Researcher --> PacketExtraction
+Researcher --> HttpExtraction
+Researcher --> Analysis
+Researcher --> Preparation
+Researcher --> ML
+
+Sources --> Capture
+Capture --> Pcap
+
+Pcap --> PacketExtraction
+Pcap --> HttpExtraction
+
+PacketExtraction --> CSV
+HttpExtraction --> CSV
+
+CSV --> Analysis
+Analysis --> Preparation
+Preparation --> CSV
+CSV --> ML
+
+@enduml

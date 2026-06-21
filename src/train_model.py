@@ -16,7 +16,9 @@ print("\nLabel distribution:")
 print(df["label"].value_counts())
 
 # Features si target
-X = df[["length", "src_port", "dst_port"]]
+#X = df[["length", "src_port", "dst_port"]]
+#X = df[["length"]]
+X = df[["src_port", "dst_port"]]
 y = df["label"]
 
 # Encode labels
