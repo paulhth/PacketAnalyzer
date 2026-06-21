@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -122,6 +122,49 @@ def plot_histogram(df: pd.DataFrame, column: str, bins: int = 30) -> None:
     ax.set_xlabel(column)
     ax.set_ylabel("Frequency")
     plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+
+
+def plot_top_flows(df: pd.DataFrame, top_n: int = 10, by: str = "total_bytes", save_path: Optional[str] = None) -> None:
+    """
+    Plots top-N flows by a given metric (horizontal bar chart) and optionally saves the figure.
+    Expects the dataset to contain src_ip, dst_ip, src_port, dst_port, transport_protocol and the metric column.
+    """
+    if by not in df.columns:
+        st.warning(f"Column '{by}' not found in dataset.")
+        return
+
+    # Build readable labels for flows
+    def make_label(r):
+        try:
+            return f"{r['src_ip']}:{int(r['src_port'])} → {r['dst_ip']}:{int(r['dst_port'])} ({r.get('transport_protocol','')})"
+        except Exception:
+            return f"{r.get('src_ip','?')}:{r.get('src_port','?')} → {r.get('dst_ip','?')}:{r.get('dst_port','?')}"
+
+    df = df.copy()
+    df["flow_label"] = df.apply(make_label, axis=1)
+
+    top = df.sort_values(by=by, ascending=False).head(top_n).reset_index(drop=True)
+
+    labels = top["flow_label"].tolist()[::-1]
+    values = top[by].tolist()[::-1]
+
+    fig, ax = plt.subplots(figsize=(10, max(4, 0.5 * top_n)))
+    ax.barh(range(len(values)), values, color="C0")
+    ax.set_yticks(range(len(values)))
+    ax.set_yticklabels(labels)
+    ax.set_xlabel(by)
+    ax.set_title(f"Top {top_n} flows by {by}")
+    plt.tight_layout()
+
+    if save_path:
+        try:
+            fig.savefig(save_path, dpi=150)
+            st.success(f"Saved plot to: {save_path}")
+        except Exception as e:
+            st.error(f"Failed to save plot: {e}")
+
     st.pyplot(fig)
     plt.close(fig)
 
@@ -294,6 +337,26 @@ else:
 
     st.subheader("Descriptive Statistics")
     st.dataframe(df_view[available_numeric_columns].describe(), use_container_width=True)
+
+
+# =========================================
+# Top Flows (new)
+# =========================================
+st.header("Top Flows")
+tf_col1, tf_col2 = st.columns([1, 2])
+
+with tf_col1:
+    metric_option = st.selectbox("Rank flows by:", options=[c for c in ["total_bytes", "packet_count"] if c in df_view.columns])
+    top_n = st.number_input("Top N", min_value=1, max_value=200, value=10, step=1)
+    save_png = st.text_input("Optional: save plot to (e.g. out/top_flows.png)", value="")
+    if st.button("Show Top Flows"):
+        save_path = save_png.strip() or None
+        plot_top_flows(df_view, top_n=top_n, by=metric_option, save_path=save_path)
+
+with tf_col2:
+    st.markdown(
+        "Use this control to visualize the top flows in the dataset. The chart builds readable labels like `src:port → dst:port (PROTO)`."
+    )
 
 
 # =========================================

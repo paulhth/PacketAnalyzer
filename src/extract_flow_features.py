@@ -20,7 +20,8 @@ from collections import defaultdict
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-input_file = os.path.join(BASE_DIR, "data/raw_pcaps/traffic_sample.pcapng")
+#input_file = os.path.join(BASE_DIR, "data/raw_pcaps/traffic_sample.pcapng")
+input_file = os.path.join(BASE_DIR, "data/raw_pcaps/1406.pcapng")
 output_file = os.path.join(BASE_DIR, "data/datasets/flow_packet_features.csv")
 
 print(f"Reading from: {input_file}")
